@@ -18,7 +18,6 @@ function onOpen() {
     .addItem('📋 View Quiz Log', 'viewLog')
     .addItem('📈 Assessment Dashboard', 'openDashboard')
     .addItem('🏫 Principal Dashboard', 'openPrincipalDashboard')
-    .addItem('🧠 Self Study MCQ Generator', 'openSelfStudy')
     .addSeparator()
     // --- Question tools ---
     .addItem('📥 Import MCQs from PDF', 'openMcqParser')
@@ -157,7 +156,7 @@ function openQuizSidebar() {
       return {
         index: i,
         question: row[0] ? row[0].toString() : '',
-        questionImage: row[1] ? row[1].toString() : '',
+        questionImage: row[1] ? row[1].toString() : '',  // Drive image URL for question
         optA: row[2] ? row[2].toString() : '',
         optAImage: row[3] ? row[3].toString() : '',
         optB: row[4] ? row[4].toString() : '',
@@ -890,7 +889,7 @@ function createTestFromSidebar(params) {
   // Store test JSON directly in the spreadsheet (hidden sheet).
   // This works reliably from both the sidebar AND doGet() Web App context.
   // PropertiesService was intentionally avoided — it fails cross-context.
-  var testJson = JSON.stringify(testData).replace(/\n/g, '\\\\n');
+  var testJson = JSON.stringify(testData);
   var dataSheet = spreadsheet.getSheetByName('TEST_DATA');
   if (!dataSheet) {
     dataSheet = spreadsheet.insertSheet('TEST_DATA');
@@ -936,7 +935,7 @@ function getTestData(testId) {
     var testJson = null;
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] && data[i][0].toString() === testId) {
-        testJson = data[i][1].toString().replace(/\\\\n/g, '\n');
+        testJson = data[i][1].toString();
       }
     }
     if (!testJson) return null;
