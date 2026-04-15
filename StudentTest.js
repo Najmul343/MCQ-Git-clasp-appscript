@@ -868,20 +868,26 @@ function makeImgHtml(url, cssClass, altText, extraStyle) {
   var phH = (cssClass === 'q-image') ? '140px' : '70px';
   var uid = 'img_' + Math.random().toString(36).substr(2, 9);
 
-  return '<div class="img-wrap" data-src="' + escHtml(url.trim()) + '">' +
+  return '<div class="img-wrap" data-src="' + escHtml(url.trim()) + '" data-uid="' + uid + '">' +
     '<div class="img-placeholder" id="ph_' + uid + '" style="height:' + phH + ';">🖼 Loading...</div>' +
     '<img class="' + cssClass + '" id="' + uid + '" src="' + src + '" alt="' + escHtml(altText || '') + '" ' +
     'style="' + style + '" ' +
-    'onload="this.style.display=\'block\';document.getElementById(\'ph_' + uid + '\').style.display=\'none\';this.parentElement.classList.add(\'img-loaded\');" ' +
+    'onload="onImgLoad(\'' + uid + '\', this);" ' +
     'onerror="document.getElementById(\'ph_' + uid + '\').innerHTML=\'<div class=img-error-state>⚠️ Image not available</div>\';" />' +
     '<div class="tap-hint">🔍 Tap to zoom</div>' +
   '</div>';
 }
 
+function onImgLoad(uid, imgEl) {
+  imgEl.style.display = 'block';
+  var ph = document.getElementById('ph_' + uid);
+  if (ph) ph.style.display = 'none';
+  var wrap = imgEl.closest('.img-wrap');
+  if (wrap) wrap.classList.add('img-loaded');
+}
+
 /* ===== GLOBAL IMAGE TAP HANDLER ===== */
 (function() {
-  // Use event delegation on body for ALL image taps
-  // This ensures it works even on dynamically created images
   var tapStartTime = 0;
   var tapStartX = 0;
   var tapStartY = 0;
@@ -897,38 +903,42 @@ function makeImgHtml(url, cssClass, altText, extraStyle) {
   document.body.addEventListener('touchend', function(e) {
     var wrap = e.target.closest ? e.target.closest('.img-wrap') : null;
     if (!wrap) return;
-    if (!wrap.classList.contains('img-loaded')) return;
 
     var elapsed = Date.now() - tapStartTime;
     var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
     var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
 
-    // Only open lightbox for quick taps (not scrolls or swipes)
     if (elapsed < 400 && dx < 15 && dy < 15) {
       e.preventDefault();
       e.stopPropagation();
       var src = wrap.getAttribute('data-src');
+      if (!src) {
+        var img = wrap.querySelector('img');
+        if (img) src = img.src;
+      }
       if (src) openLightbox(src);
     }
   }, { passive: false });
 
-  // Desktop click handler
+  // Desktop click handler - unified, works on all devices
   document.body.addEventListener('click', function(e) {
-    // Skip if on mobile (touch already handled)
-    if ('ontouchstart' in window) return;
     var wrap = e.target.closest ? e.target.closest('.img-wrap') : null;
     if (!wrap) return;
-    if (!wrap.classList.contains('img-loaded')) return;
 
-    // Don't trigger if clicking inside option-item (let option selection work)
     var optionItem = e.target.closest('.option-item');
     if (optionItem) {
-      // Only open lightbox if click was directly on the image or img-wrap
       if (e.target.tagName !== 'IMG' && !e.target.classList.contains('tap-hint') && e.target !== wrap) return;
     }
 
     var src = wrap.getAttribute('data-src');
-    if (src) openLightbox(src);
+    if (!src) {
+      var img = wrap.querySelector('img');
+      if (img) src = img.src;
+    }
+    if (src) {
+      e.preventDefault();
+      openLightbox(src);
+    }
   });
 })();
 
