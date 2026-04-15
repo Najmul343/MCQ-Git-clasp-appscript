@@ -270,8 +270,8 @@ input, select, textarea { font-size: 16px !important; }
   position: absolute; bottom: 6px; right: 8px;
   background: rgba(0,0,0,0.65); color: white; font-size: 10px;
   padding: 3px 8px; border-radius: 10px; pointer-events: none;
+  display: block; /* Always show */
 }
-.img-loaded .tap-hint { display: block; }
 
 /* ===== OPTIONS ===== */
 .options-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; width: 100%; }
@@ -867,23 +867,16 @@ function makeImgHtml(url, cssClass, altText, extraStyle) {
   var style = extraStyle || '';
   var phH = (cssClass === 'q-image') ? '140px' : '70px';
   var uid = 'img_' + Math.random().toString(36).substr(2, 9);
+  var safeUrl = escHtml(url.trim());
 
-  return '<div class="img-wrap" data-src="' + escHtml(url.trim()) + '" data-uid="' + uid + '">' +
+  return '<div class="img-wrap" data-src="' + safeUrl + '" onclick="openLightbox(\'' + safeUrl.replace(/'/g, "\\'") + '\')">' +
     '<div class="img-placeholder" id="ph_' + uid + '" style="height:' + phH + ';">🖼 Loading...</div>' +
     '<img class="' + cssClass + '" id="' + uid + '" src="' + src + '" alt="' + escHtml(altText || '') + '" ' +
     'style="' + style + '" ' +
-    'onload="onImgLoad(\'' + uid + '\', this);" ' +
+    'onload="this.style.display=\'block\';document.getElementById(\'ph_' + uid + '\').style.display=\'none\';this.parentElement.classList.add(\'img-loaded\');" ' +
     'onerror="document.getElementById(\'ph_' + uid + '\').innerHTML=\'<div class=img-error-state>⚠️ Image not available</div>\';" />' +
     '<div class="tap-hint">🔍 Tap to zoom</div>' +
   '</div>';
-}
-
-function onImgLoad(uid, imgEl) {
-  imgEl.style.display = 'block';
-  var ph = document.getElementById('ph_' + uid);
-  if (ph) ph.style.display = 'none';
-  var wrap = imgEl.closest('.img-wrap');
-  if (wrap) wrap.classList.add('img-loaded');
 }
 
 /* ===== GLOBAL IMAGE TAP HANDLER ===== */
@@ -908,33 +901,27 @@ function onImgLoad(uid, imgEl) {
     var dx = Math.abs(e.changedTouches[0].clientX - tapStartX);
     var dy = Math.abs(e.changedTouches[0].clientY - tapStartY);
 
+    // Quick tap (<400ms, <15px movement) opens lightbox
     if (elapsed < 400 && dx < 15 && dy < 15) {
       e.preventDefault();
       e.stopPropagation();
       var src = wrap.getAttribute('data-src');
-      if (!src) {
-        var img = wrap.querySelector('img');
-        if (img) src = img.src;
-      }
       if (src) openLightbox(src);
     }
   }, { passive: false });
 
-  // Desktop click handler - unified, works on all devices
+  // Desktop click handler
   document.body.addEventListener('click', function(e) {
     var wrap = e.target.closest ? e.target.closest('.img-wrap') : null;
     if (!wrap) return;
 
+    // Don't intercept option selection clicks
     var optionItem = e.target.closest('.option-item');
     if (optionItem) {
       if (e.target.tagName !== 'IMG' && !e.target.classList.contains('tap-hint') && e.target !== wrap) return;
     }
 
     var src = wrap.getAttribute('data-src');
-    if (!src) {
-      var img = wrap.querySelector('img');
-      if (img) src = img.src;
-    }
     if (src) {
       e.preventDefault();
       openLightbox(src);
